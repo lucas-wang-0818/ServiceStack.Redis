@@ -42,5 +42,8 @@
     <!-- note: not needed from netstandard2.1 or netcoreapp3.0 onwards -->
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.1.0" />
   </ItemGroup>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="xcopy /r /y  &quot;bin\$(ConfigurationName)\net45\&quot; &quot;$(SolutionDir)\..\..&quot;\SharedDLL\&quot;$(SolutionName)&quot;" />
+  </Target>
   
 </Project>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Security.Authentication;
 using System.Text;
+
 using ServiceStack.IO;
 using ServiceStack.Text;
 
@@ -32,10 +33,20 @@ namespace ServiceStack.Redis
             this.Db = db;
         }
 
+        //public RedisEndpoint(string host, int port, string userName = null, string password = null, long db = RedisConfig.DefaultDb)
+        //    : this()
+        //{
+        //    this.Host = host;
+        //    this.Port = port;
+        //    this.UserName = userName;
+        //    this.Password = password;
+        //    this.Db = db;
+        //}
+
         public string Host { get; set; }
         public int Port { get; set; }
         public bool Ssl { get; set; }
-        public SslProtocols? SslProtocols {get; set;}
+        public SslProtocols? SslProtocols { get; set; }
         public int ConnectTimeout { get; set; }
         public int SendTimeout { get; set; }
         public int ReceiveTimeout { get; set; }
@@ -43,6 +54,7 @@ namespace ServiceStack.Redis
         public int IdleTimeOutSecs { get; set; }
         public long Db { get; set; }
         public string Client { get; set; }
+        public string UserName { get; set; }
         public string Password { get; set; }
         public bool RequiresAuth { get { return !string.IsNullOrEmpty(Password); } }
         public string NamespacePrefix { get; set; }
@@ -55,6 +67,8 @@ namespace ServiceStack.Redis
             var args = new List<string>();
             if (Client != null)
                 args.Add("Client=" + Client);
+            if (UserName != null)
+                args.Add("UserName=" + UserName.UrlEncode());
             if (Password != null)
                 args.Add("Password=" + Password.UrlEncode());
             if (Db != RedisConfig.DefaultDb)
@@ -78,24 +92,25 @@ namespace ServiceStack.Redis
 
             if (args.Count > 0)
                 sb.Append("?").Append(string.Join("&", args));
-            
+
             return StringBuilderCache.ReturnAndFree(sb);
         }
 
         protected bool Equals(RedisEndpoint other)
         {
-            return string.Equals(Host, other.Host) 
-                && Port == other.Port 
-                && Ssl.Equals(other.Ssl) 
+            return string.Equals(Host, other.Host)
+                && Port == other.Port
+                && Ssl.Equals(other.Ssl)
                 && SslProtocols.Equals(other.SslProtocols)
-                && ConnectTimeout == other.ConnectTimeout 
-                && SendTimeout == other.SendTimeout 
-                && ReceiveTimeout == other.ReceiveTimeout 
+                && ConnectTimeout == other.ConnectTimeout
+                && SendTimeout == other.SendTimeout
+                && ReceiveTimeout == other.ReceiveTimeout
                 && RetryTimeout == other.RetryTimeout
-                && IdleTimeOutSecs == other.IdleTimeOutSecs 
-                && Db == other.Db 
-                && string.Equals(Client, other.Client) 
-                && string.Equals(Password, other.Password) 
+                && IdleTimeOutSecs == other.IdleTimeOutSecs
+                && Db == other.Db
+                && string.Equals(Client, other.Client)
+                && string.Equals(UserName, other.UserName)
+                && string.Equals(Password, other.Password)
                 && string.Equals(NamespacePrefix, other.NamespacePrefix);
         }
 
@@ -122,6 +137,7 @@ namespace ServiceStack.Redis
                 hashCode = (hashCode * 397) ^ IdleTimeOutSecs;
                 hashCode = (hashCode * 397) ^ Db.GetHashCode();
                 hashCode = (hashCode * 397) ^ (Client != null ? Client.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ (UserName != null ? UserName.GetHashCode() : 0);
                 hashCode = (hashCode * 397) ^ (Password != null ? Password.GetHashCode() : 0);
                 hashCode = (hashCode * 397) ^ (NamespacePrefix != null ? NamespacePrefix.GetHashCode() : 0);
                 return hashCode;

@@ -25,6 +25,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
 using ServiceStack.Text;
 using ServiceStack.Text.Pools;
 
@@ -103,7 +104,7 @@ namespace ServiceStack.Redis
                     var type = ConnectTimeout <= 0 ? "sync" : "async";
                     logDebug($"Attempting {type} connection to '{Host}:{Port}' (SEND {SendTimeout}, RECV {ReceiveTimeout} Timeouts)...");
                 }
-                
+
                 if (ConnectTimeout <= 0)
                 {
                     socket.Connect(Host, Port);
@@ -180,9 +181,9 @@ namespace ServiceStack.Redis
 #else
                     if (SslProtocols != null)
                     {
-                        sslStream.AuthenticateAsClient(Host, new X509CertificateCollection(), 
+                        sslStream.AuthenticateAsClient(Host, new X509CertificateCollection(),
                             SslProtocols ?? System.Security.Authentication.SslProtocols.None, checkCertificateRevocation: true);
-                    } 
+                    }
                     else
                     {
                         sslStream.AuthenticateAsClient(Host);
@@ -198,7 +199,12 @@ namespace ServiceStack.Redis
                 bufferedReader = new BufferedReader(networkStream, 16 * 1024);
 
                 if (!string.IsNullOrEmpty(Password))
-                    SendUnmanagedExpectSuccess(Commands.Auth, Password.ToUtf8Bytes());
+                {
+                    if (!string.IsNullOrEmpty(UserName))
+                        SendUnmanagedExpectSuccess(Commands.Auth, UserName.ToUtf8Bytes(), Password.ToUtf8Bytes());
+                    else
+                        SendUnmanagedExpectSuccess(Commands.Auth, Password.ToUtf8Bytes());
+                }
 
                 if (db != 0)
                     SendUnmanagedExpectSuccess(Commands.Select, db.ToUtf8Bytes());
@@ -358,6 +364,8 @@ namespace ServiceStack.Redis
                 var safeLastCommand = string.IsNullOrEmpty(Password)
                     ? lastCommand
                     : (lastCommand ?? "").Replace(Password, "");
+                if (!string.IsNullOrEmpty(UserName))
+                    safeLastCommand = (safeLastCommand ?? "").Replace(UserName, "");
 
                 if (!string.IsNullOrEmpty(safeLastCommand))
                     error = $"{error}, LastCommand:'{safeLastCommand}', srcPort:{clientPort}";
@@ -377,7 +385,8 @@ namespace ServiceStack.Redis
         private RedisRetryableException CreateRetryableResponseError(string error)
         {
             string safeLastCommand = string.IsNullOrEmpty(Password) ? lastCommand : (lastCommand ?? "").Replace(Password, "");
-
+            if (!string.IsNullOrEmpty(UserName))
+                safeLastCommand = (safeLastCommand ?? "").Replace(UserName, "");
             var throwEx = new RedisRetryableException(
                 $"[{DateTime.UtcNow:HH:mm:ss.fff}] {error}, sPort: {clientPort}, LastCommand: {safeLastCommand}");
             logError(throwEx.Message);
@@ -444,9 +453,9 @@ namespace ServiceStack.Redis
             {
                 bytes = bytes.Combine(GetCmdBytes('$', safeBinaryValue.Length), safeBinaryValue, endData);
             }
-            
+
             if (log.IsDebugEnabled && RedisConfig.EnableVerboseLogging)
-                logDebug("stream.Write: " + Encoding.UTF8.GetString(bytes, 0, Math.Min(bytes.Length, 50)).Replace("\r\n"," ").SafeSubstring(0,50));
+                logDebug("stream.Write: " + Encoding.UTF8.GetString(bytes, 0, Math.Min(bytes.Length, 50)).Replace("\r\n", " ").SafeSubstring(0, 50));
 
             SendDirectToSocket(new ArraySegment<byte>(bytes, 0, bytes.Length));
 
@@ -535,12 +544,12 @@ namespace ServiceStack.Redis
                         {
                             if (sb.Length > 50)
                                 break;
-                            
+
                             sb.Append(Encoding.UTF8.GetString(cmd.Array, cmd.Offset, cmd.Count));
                         }
-                        logDebug("socket.Send: " + StringBuilderCache.ReturnAndFree(sb.Replace("\r\n", " ")).SafeSubstring(0,50));
+                        logDebug("socket.Send: " + StringBuilderCache.ReturnAndFree(sb.Replace("\r\n", " ")).SafeSubstring(0, 50));
                     }
-                    
+
                     socket.Send(cmdBuffer); //Optimized for Windows
                 }
                 else
@@ -569,7 +578,7 @@ namespace ServiceStack.Redis
         /// <summary>
         /// Called before returning pooled client/socket  
         /// </summary>
-        internal void Activate(bool newClient=false)
+        internal void Activate(bool newClient = false)
         {
             if (!newClient)
             {
@@ -619,7 +628,7 @@ namespace ServiceStack.Redis
 
             if (log.IsDebugEnabled && RedisConfig.EnableVerboseLogging)
                 logDebug(name + "()");
-        
+
             return bufferedReader.ReadByte();
         }
 
@@ -648,7 +657,7 @@ namespace ServiceStack.Redis
                 if (TrackThread.Value.ThreadId != Thread.CurrentThread.ManagedThreadId)
                     throw new InvalidAccessException(TrackThread.Value.ThreadId, TrackThread.Value.StackTrace);
             }
-            
+
             var i = 0;
             var didWriteToBuffer = false;
             Exception originalEx = null;
@@ -702,7 +711,7 @@ namespace ServiceStack.Redis
                 {
                     if (log.IsDebugEnabled)
                         logDebug("SendReceive Exception: " + outerEx.Message);
-                    
+
                     var retryableEx = outerEx as RedisRetryableException;
                     if (retryableEx == null && outerEx is RedisException
                         || outerEx is LicenseException)
@@ -879,7 +888,7 @@ namespace ServiceStack.Redis
             foreach (var arg in args)
             {
                 var strArg = arg.FromUtf8Bytes();
-                if (strArg == Password) continue;
+                if (strArg == Password || strArg == UserName) continue;
 
                 if (sb.Length > 0)
                     sb.Append(" ");

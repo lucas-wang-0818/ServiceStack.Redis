@@ -86,6 +86,9 @@ namespace ServiceStack.Redis
                         case "client":
                             endpoint.Client = value;
                             break;
+                        case "username":
+                            endpoint.UserName = value;
+                            break;
                         case "password":
                             endpoint.Password = value;
                             break;

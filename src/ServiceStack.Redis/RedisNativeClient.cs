@@ -111,6 +111,7 @@ namespace ServiceStack.Redis
         public int RetryCount { get; set; }
         public int SendTimeout { get; set; }
         public int ReceiveTimeout { get; set; }
+        public string UserName { get; set; }
         public string Password { get; set; }
         public string Client { get; set; }
         public int IdleTimeOutSecs { get; set; }
@@ -177,6 +178,7 @@ namespace ServiceStack.Redis
             SendTimeout = config.SendTimeout;
             ReceiveTimeout = config.ReceiveTimeout;
             RetryTimeout = config.RetryTimeout;
+            UserName = config.UserName;
             Password = config.Password;
             NamespacePrefix = config.NamespacePrefix;
             Client = config.Client;
